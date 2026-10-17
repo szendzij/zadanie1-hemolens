@@ -1,10 +1,10 @@
-name: Playwright Tests
+name: Playwright CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_dispatch:
 
 concurrency:
@@ -15,8 +15,8 @@ permissions:
   contents: read
 
 jobs:
-  test:
-    timeout-minutes: 15
+  lint-and-typecheck:
+    name: Lint & Typecheck
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -31,21 +31,125 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck tests
-        run: npx tsc
+      - name: Run TypeScript typecheck
+        run: npx tsc --noEmit
+
+  api-tests:
+    name: API Tests
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run API Tests
+        run: npm run test:api
+
+      - name: Upload Blob Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blob-report-api
+          path: blob-report/
+          retention-days: 1
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Install Playwright Chromium & dependencies
         run: npx playwright install --with-deps chromium
 
-      - name: Run Playwright tests
-        run: npx playwright test --reporter=github,html
+      - name: Run E2E Tests
+        run: npm run test:e2e
 
-      - name: Upload Playwright report
+      - name: Upload Blob Report
         uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
+        if: always()
+        with:
+          name: blob-report-e2e
+          path: blob-report/
+          retention-days: 1
+
+  merge-reports:
+    name: Merge Reports & Summary
+    runs-on: ubuntu-latest
+    needs: [api-tests, e2e-tests]
+    if: always()
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download Blob Reports
+        uses: actions/download-artifact@v4
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*
+          merge-multiple: true
+
+      - name: Merge Playwright Reports
+        run: npx playwright merge-reports -c playwright.config.ts --reporter=html,json,github all-blob-reports
+
+      - name: Upload Merged Playwright Report
+        uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: playwright-report
-          path: |
-            playwright-report/
-            test-results/
-          retention-days: 7
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Generate Consolidated Job Summary
+        if: always()
+        run: |
+          API_STATUS="${{ needs.api-tests.result == 'success' && ':white_check_mark: Passed' || (needs.api-tests.result == 'skipped' && ':white_circle: Skipped' || ':x: Failed') }}"
+          E2E_STATUS="${{ needs.e2e-tests.result == 'success' && ':white_check_mark: Passed' || (needs.e2e-tests.result == 'skipped' && ':white_circle: Skipped' || ':x: Failed') }}"
+
+          echo "### 🎭 Playwright Consolidated Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Suite | Target / Mode | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **API Tests** | Node.js / REST API (/todos) | $API_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| **E2E Scenarios** | Desktop Chromium (Vue Todo SPA) | $E2E_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Merged HTML report containing results from all suites is attached to this workflow run." >> $GITHUB_STEP_SUMMARY
+
+      - name: Evaluate Overall Workflow Status
+        run: |
+          if [ "${{ needs.api-tests.result }}" != "success" ] || \
+             [ "${{ needs.e2e-tests.result }}" != "success" ]; then
+            echo "One or more parallel test jobs failed."
+            exit 1
+          fi
