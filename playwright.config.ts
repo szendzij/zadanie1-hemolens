@@ -17,10 +17,10 @@ export default defineConfig({
         ['list'],
       ]
     : [
-        ['html', { open: 'never' }],
+        ['html'],
         ['list'],
-        ['json', { outputFile: 'test-results/results.json' }],
-        ['junit', { outputFile: 'test-results/results.xml' }],
+        ['json'],
+        ['junit'],
       ], 
   use: {
     baseURL: BASE_URL,
