@@ -16,22 +16,9 @@ export type TodoInput = {
   [key: string]: unknown
 }
 
-/**
- * REST client for the app's backend - an API helper, not a page object: it never
- * touches the DOM and takes no `page`.
- *
- * The backend is a json-server instance whose whole state is one `todos`
- * array (see data.json). It has no reset endpoint and accepts every request
- * without auth, so cleaning up means deleting what is addressable by id.
- */
 export class TodoApi {
-  constructor(private readonly request: APIRequestContext) {}
+  constructor(private readonly request: APIRequestContext) { }
 
-  // ---------------------------------------------------------------------------
-  // Queries
-  // ---------------------------------------------------------------------------
-
-  /** Returns all stored todos. */
   async list(): Promise<Todo[]> {
     const response = await this.retryable(
       () => this.request.get(TODOS_ENDPOINT),
@@ -43,20 +30,11 @@ export class TodoApi {
     return response.json()
   }
 
-  /** Finds todos matching the given title. */
   async byTitle(title: string): Promise<Todo[]> {
     const todos = await this.list()
     return todos.filter((todo) => todo.title === title)
   }
 
-  // ---------------------------------------------------------------------------
-  // Mutations
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Creates a new todo record and verifies status 201.
-   * Defaults `completed` to `false` if omitted.
-   */
   async create(todo: TodoInput): Promise<Todo> {
     const payload = { completed: false, ...todo }
     const response = await this.post(payload)
@@ -64,25 +42,15 @@ export class TodoApi {
     return response.json()
   }
 
-  /** Raw POST, for specs that need to assert on status codes or send arbitrary payloads. */
   post(payload: unknown): Promise<APIResponse> {
     return this.request.post(TODOS_ENDPOINT, { data: payload })
   }
 
-  /** Sends DELETE for the given todo id. Returns raw response for status asserting. */
   async remove(id: string | number): Promise<APIResponse> {
     const url = `${TODOS_ENDPOINT}/${encodeURIComponent(String(id))}`
     return this.retryable(() => this.request.delete(url), `DELETE ${url}`)
   }
 
-  // ---------------------------------------------------------------------------
-  // State Management
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Wipes the backend. Every spec starts from an empty list: one data.json is
-   * shared by all workers, so a test may only trust rows it created itself.
-   */
   async reset(): Promise<void> {
     const todos = await this.list()
     if (todos.length === 0) {
@@ -102,20 +70,7 @@ export class TodoApi {
     ).toEqual([])
   }
 
-  // ---------------------------------------------------------------------------
-  // Internal Helpers
-  // ---------------------------------------------------------------------------
-
-  /**
-   * json-server closes idle keep-alive sockets after 5s, so a pooled connection
-   * can be reaped exactly as the next request goes out and surface as a
-   * `socket hang up (ECONNRESET)`. Only idempotent calls are retried, and only
-   * when the request threw (a 4xx/5xx answer is a result, not a hiccup).
-   */
-  private async retryable<T>(
-    operation: () => Promise<T>,
-    label: string,
-  ): Promise<T> {
+  private async retryable<T>(operation: () => Promise<T>, label: string): Promise<T> {
     const maxAttempts = 3
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -123,8 +78,7 @@ export class TodoApi {
       } catch (error) {
         if (attempt >= maxAttempts) throw error
         console.log(
-          `[todo-api] ${label} failed (${
-            String(error).split('\n')[0]
+          `[todo-api] ${label} failed (${String(error).split('\n')[0]
           }), retry ${attempt}/${maxAttempts - 1}`,
         )
         await new Promise((resolve) => setTimeout(resolve, 250 * attempt))

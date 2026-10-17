@@ -56,9 +56,7 @@ test('ignores Enter on an empty field and sends no request', async ({ page, todo
 
 test('renders a title as text, not as markup', async ({ todoPage }) => {
   await todoPage.open()
-
   await todoPage.add('<b>niepogrubione</b>')
-
   await expect(todoPage.titleOf(todoPage.items.first())).toHaveText(
     '<b>niepogrubione</b>',
   )
@@ -69,9 +67,7 @@ test('deletes a todo through the destroy button and hides the list after the las
   await todoApi.create({ title: 'do usuniecia', completed: false })
   await todoApi.create({ title: 'zostaje', completed: false })
   await todoPage.open()
-
   await todoPage.destroy(todoPage.item('do usuniecia'))
-
   await expect(todoPage.item('do usuniecia')).toHaveCount(0)
   await expect(todoPage.item('zostaje')).toHaveCount(1)
   await expect
