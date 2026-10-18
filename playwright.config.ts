@@ -17,14 +17,12 @@ export default defineConfig({
         ['list'],
       ]
     : [
-        ['html'],
         ['list'],
-        ['json'],
-        ['junit'],
-      ], 
+        ['html', { open: 'never' }],
+      ],
   use: {
     baseURL: BASE_URL,
-    trace: 'on-first-retry'
+    trace: 'retain-on-failure',
   },
 
   projects: [
