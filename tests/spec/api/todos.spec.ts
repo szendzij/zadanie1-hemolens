@@ -47,8 +47,6 @@ test.describe('POST /todos', () => {
     expect(body.completed).toBe(false)
     expect(body.id).toBeDefined()
     expect(typeof body.id === 'string' || typeof body.id === 'number').toBe(true)
-
-    // Ensure the record was persisted under that generated id
     const found = await todoApi.byTitle('zadanie bez id')
     expect(found).toHaveLength(1)
     expect(found[0].id).toBe(body.id)
