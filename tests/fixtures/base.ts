@@ -18,11 +18,7 @@ export const test = base.extend<{
   cleanState: [
     async ({ todoApi }, use) => {
       await todoApi.reset()
-      try {
-        await use()
-      } finally {
-        await todoApi.reset()
-      }
+      await use()
     },
     { auto: true },
   ],
