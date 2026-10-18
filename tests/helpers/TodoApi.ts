@@ -1,4 +1,4 @@
-import { APIRequestContext, APIResponse, expect } from '@playwright/test'
+import { APIRequestContext, APIResponse } from '@playwright/test'
 
 const TODOS_ENDPOINT = '/todos'
 
@@ -17,16 +17,13 @@ export type TodoInput = {
 }
 
 export class TodoApi {
-  constructor(private readonly request: APIRequestContext) { }
+  constructor(private readonly request: APIRequestContext) {}
 
   async list(): Promise<Todo[]> {
-    const response = await this.retryable(
-      () => this.request.get(TODOS_ENDPOINT),
-      `GET ${TODOS_ENDPOINT}`,
-    )
-    expect(response.status(), `GET ${TODOS_ENDPOINT} should answer 200`).toBe(
-      200,
-    )
+    const response = await this.request.get(TODOS_ENDPOINT)
+    if (!response.ok()) {
+      throw new Error(`GET ${TODOS_ENDPOINT} failed with status ${response.status()}`)
+    }
     return response.json()
   }
 
@@ -38,7 +35,9 @@ export class TodoApi {
   async create(todo: TodoInput): Promise<Todo> {
     const payload = { completed: false, ...todo }
     const response = await this.post(payload)
-    expect(response.status(), `POST ${TODOS_ENDPOINT} ${todo.title}`).toBe(201)
+    if (!response.ok()) {
+      throw new Error(`POST ${TODOS_ENDPOINT} failed with status ${response.status()}`)
+    }
     return response.json()
   }
 
@@ -48,7 +47,7 @@ export class TodoApi {
 
   async remove(id: string | number): Promise<APIResponse> {
     const url = `${TODOS_ENDPOINT}/${encodeURIComponent(String(id))}`
-    return this.retryable(() => this.request.delete(url), `DELETE ${url}`)
+    return this.request.delete(url)
   }
 
   async reset(): Promise<void> {
@@ -57,33 +56,15 @@ export class TodoApi {
       return
     }
 
-    await Promise.all(
-      todos
-        .filter((todo) => todo.id !== undefined)
-        .map((todo) => this.remove(todo.id)),
-    )
-
-    const leftovers = await this.list()
-    expect(
-      leftovers,
-      'reset left records behind - non-id rows cannot be deleted over HTTP',
-    ).toEqual([])
-  }
-
-  private async retryable<T>(operation: () => Promise<T>, label: string): Promise<T> {
-    const maxAttempts = 3
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        return await operation()
-      } catch (error) {
-        if (attempt >= maxAttempts) throw error
-        console.log(
-          `[todo-api] ${label} failed (${String(error).split('\n')[0]
-          }), retry ${attempt}/${maxAttempts - 1}`,
-        )
-        await new Promise((resolve) => setTimeout(resolve, 250 * attempt))
+    for (const todo of todos) {
+      if (todo.id !== undefined) {
+        await this.remove(todo.id)
       }
     }
-    throw new Error(`[todo-api] ${label} failed after ${maxAttempts} attempts`)
+
+    const leftovers = await this.list()
+    if (leftovers.length > 0) {
+      throw new Error('reset left records behind - non-id rows cannot be deleted over HTTP')
+    }
   }
 }

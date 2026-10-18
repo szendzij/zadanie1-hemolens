@@ -110,4 +110,9 @@ test.describe('DELETE /todos/{id}', () => {
     await todoApi.remove(created.id!)
     expect((await todoApi.remove(created.id!)).status()).toBe(404)
   })
+
+  test('returns 404 when attempting to delete a non-existent todo id directly', async ({ todoApi }) => {
+    const response = await todoApi.remove('nieistniejacy-id-12345')
+    expect(response.status()).toBe(404)
+  })
 })
