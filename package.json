@@ -10,7 +10,10 @@
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
     "test:api": "playwright test --project=api",
-    "test:e2e": "playwright test --project=e2e",
+    "test:e2e": "playwright test --project=e2e-chromium --project=e2e-firefox --project=e2e-webkit",
+    "test:e2e:chrome": "playwright test --project=e2e-chromium",
+    "test:e2e:firefox": "playwright test --project=e2e-firefox",
+    "test:e2e:webkit": "playwright test --project=e2e-webkit",
     "test:report": "playwright show-report"
   },
   "dependencies": {

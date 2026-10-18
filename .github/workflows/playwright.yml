@@ -81,8 +81,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright Chromium & dependencies
-        run: npx playwright install --with-deps chromium
+      - name: Install Playwright Browsers & dependencies
+        run: npx playwright install --with-deps chromium firefox webkit
 
       - name: Run E2E Tests
         run: npm run test:e2e
@@ -142,7 +142,7 @@ jobs:
           echo "| Test Suite | Target / Mode | Status |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- | :--- |" >> $GITHUB_STEP_SUMMARY
           echo "| **API Tests** | Node.js / REST API (/todos) | $API_STATUS |" >> $GITHUB_STEP_SUMMARY
-          echo "| **E2E Scenarios** | Desktop Chromium (Vue Todo SPA) | $E2E_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| **E2E Scenarios** | Multi-browser: Chromium, Firefox, WebKit (Vue Todo SPA) | $E2E_STATUS |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Merged HTML report containing results from all suites is attached to this workflow run." >> $GITHUB_STEP_SUMMARY
 

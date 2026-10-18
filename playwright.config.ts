@@ -39,10 +39,24 @@ export default defineConfig({
     },
 
     {
-      name: 'e2e',
+      name: 'e2e-chromium',
       testDir: './tests/spec/e2e',
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'] },
+    },
+
+    {
+      name: 'e2e-firefox',
+      testDir: './tests/spec/e2e',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Firefox'] },
+    },
+
+    {
+      name: 'e2e-webkit',
+      testDir: './tests/spec/e2e',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Safari'] },
     },
 
   ],
